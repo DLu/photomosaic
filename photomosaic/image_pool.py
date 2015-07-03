@@ -10,7 +10,7 @@ FORMAT = "%(name)s.%(funcName)s:  %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
-class ImagePool(dict):
+class ImagePool:
     def __init__(self):
         None
 
