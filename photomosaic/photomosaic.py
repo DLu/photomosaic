@@ -25,6 +25,8 @@ from progress_bar import progress_bar
 from sql_image_pool import SqlImagePool
 from tile import Tile
 from image_functions import *
+from partition import *
+from image_analysis import *
 
 # Configure logger.
 FORMAT = "%(name)s.%(funcName)s:  %(message)s"
@@ -60,68 +62,17 @@ class Photomosaic:
     def partition_tiles(self, dimensions=10, depth=0, hdr=80,
               debris=False, min_debris_depth=1, base_width=None, analyze=True):
         "Partition the target image into a list of Tile objects."
-        if isinstance(dimensions, int):
-            dimensions = dimensions, dimensions
-        if base_width is not None:
-            cwidth = self.img.size[0] / dimensions[0]
-            width = base_width * dimensions[0]
-            factor = base_width / cwidth
-            height = int(self.img.size[1] * factor)
-            print self.img.size, dimensions, width, height
-            img = crop_to_fit(self.img, (width, height))
-        # img.size must have dimensions*2**depth as a factor.
-        factor = dimensions[0]*2**depth, dimensions[1]*2**depth
-        new_size = tuple([int(factor[i]*np.ceil(self.img.size[i]/factor[i])) \
-                          for i in [0, 1]])
-        logger.info("Resizing image to %s, a round number for partitioning. "
-                    "If necessary, I will crop to fit.",
-                    new_size)
-        img = crop_to_fit(self.img, new_size)
-        
-        mask = self.mask
-        
-        if mask:
-            mask = crop_to_fit(mask, new_size)
-            if not debris:
-                mask = mask.convert("1") # no gray
-        width = img.size[0] // dimensions[0] 
-        height = img.size[1] // dimensions[1]
-        tiles = []
-        for y in range(dimensions[1]):
-            for x in range(dimensions[0]):
-                tile_img = img.crop((x*width, y*height,
-                                    (x + 1)*width, (y + 1)*height))
-                if mask:
-                    mask_img = mask.crop((x*width, y*height,
-                                         (x + 1)*width, (y + 1)*height))
-                else:
-                    mask_img = None
-                tile = Tile(tile_img, x, y, mask=mask_img)
-                tiles.append(tile)
-                
-        for g in xrange(depth):
-            old_tiles = tiles
-            tiles = []
-            for tile in old_tiles:
-                if tile.dynamic_range() > hdr or tile.straddles_mask_edge():
-                    # Keep children; discard parent.
-                    tiles += tile.procreate()
-                else:
-                    # Keep tile -- no children.
-                    tiles.append(tile)
-            logging.info("There are %d tiles in generation %d",
-                         len(tiles), g)
-        # Now that all tiles have been made and subdivided, decide which are blank.
-        [tile.determine_blankness(min_debris_depth) for tile in tiles]
-        logger.info("%d tiles are set to be blank",
-                    len([1 for tile in tiles if tile.blank]))
-        self.tiles = tiles
+        self.p = Partition(self.img)
+        self.p.simple_partition(dimensions, depth, hdr, debris, 
+            min_debris_depth, base_width, analyze)
+            
+        self.numbers = {}    
 
         if not analyze:
             return
-        pbar = progress_bar(len(self.tiles), "Analyzing images")
-        for tile in self.tiles:
-            tile.analyze()
+        pbar = progress_bar(len(self.p.tiles), "Analyzing images")
+        for tile in self.p.tiles:
+            self.numbers[tile] = analyze_this( self.p.get_tile_img(tile) )
             pbar.next()
 
     def match(self, tolerance=1, usage_penalty=1, usage_impunity=2):
@@ -131,43 +82,48 @@ class Photomosaic:
             exit(-1)
         self.pool.reset_usage()
         
-        pbar = progress_bar(len(self.tiles), "Choosing and loading matching images")
-        for tile in self.tiles:
-            if tile.blank:
-                pbar.next()
-                continue
+        self.matches = {}
+        
+        pbar = progress_bar(len(self.p.tiles), "Choosing and loading matching images")
+        for tile in self.p.tiles:
+            #if tile.blank:
+            #    pbar.next()
+            #    continue
             self.match_one(tile, tolerance, usage_penalty, usage_impunity)
             pbar.next()
     
     def match_one(self, tile, tolerance=1, usage_penalty=1, usage_impunity=2):
-        tile.match = self.pool.choose_match(tile.lab, tolerance,
-                usage_penalty if tile.depth < usage_impunity else 0)
+        rgb, lab = self.numbers[ tile ] 
+        match = self.pool.choose_match(lab, tolerance, usage_penalty )
+        self.matches[ tile ] = match
+        print 'MATCH', match
             
     def assemble(self, pad=False, scatter=False, margin=0, scaled_margin=False,
            background=(255, 255, 255)):
         """Create the mosaic image.""" 
         # Infer dimensions so they don't have to be passed in the function call.
-        dimensions = map(max, zip(*[(1 + tile.x, 1 + tile.y) for tile in self.tiles]))
-        mosaic_size = map(lambda (x, y): x*y,
-                             zip(*[self.tiles[0].ancestor_size, dimensions]))
+        mosaic_size = map(max, zip(*[(tile[0]+tile[2], tile[1]+tile[3]) for tile in self.p.tiles]))
         mos = Image.new('RGB', mosaic_size, background)
-        pbar = progress_bar(len(self.tiles), "Scaling and placing tiles")
-        random.shuffle(self.tiles)
-        for tile in self.tiles:
-            if tile.blank:
-                pbar.next()
-                continue
+        pbar = progress_bar(len(self.p.tiles), "Scaling and placing tiles")
+        random.shuffle(self.p.tiles)
+        for tile in self.p.tiles:
+            #if tile.blank:
+            #    pbar.next()
+            #    continue
             if pad:
                 size = shrink_by_lightness(pad, tile.size, tile.match['dL'])
                 if margin == 0:
                     margin = min(tile.size[0] - size[0], tile.size[1] - size[1])
             else:
-                size = tile.size
+                size = tile[2], tile[3]
             if scaled_margin:
                 pos = tile.get_position(size, scatter, margin//(1 + tile.depth))
             else:
-                pos = tile.get_position(size, scatter, margin)
-            mos.paste(crop_to_fit(tile.match_img, size), pos)
+                pos = tile[0], tile[1] #tile.get_position(size, scatter, margin)
+                
+            fn = self.matches[tile][4]
+            mi = Image.open(fn) 
+            mos.paste(crop_to_fit(mi, size), pos)
             pbar.next()
         self.mos = mos
         
