@@ -6,12 +6,21 @@ FORMAT = "%(name)s.%(funcName)s:  %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
+def to_int_coords(area):
+    x,y,w,h = area
+    x0 = int(floor(x))
+    y0 = int(floor(y))
+    w0 = int(ceil(x+w)-x0)
+    h0 = int(ceil(y+h)-y0)
+    return x0,y0,w0,h0
+
 class Partition:
     def __init__(self, img, mask=None):
         self.img = img
         self.mask = mask
         self.areas = []
         self.tiles = None
+        self.img_cache = {}
 
     def simple_partition(self, dimensions=10, depth=0, hdr=80,
               debris=False, min_debris_depth=1, analyze=True):
@@ -62,15 +71,14 @@ class Partition:
     def get_tiles(self):
         if self.tiles:
             return self.tiles
-        self.tiles = []    
-        for x,y,w,h in self.areas:    
-            x0 = int(floor(x))
-            y0 = int(floor(y))
-            w0 = int(ceil(x+w)-x0)
-            h0 = int(ceil(y+h)-y0)
-            self.tiles.append( (x0, y0, w0, h0) )                    
+        self.tiles = map(to_int_coords, self.areas)
 
     def get_tile_img(self, tile):
-        (x,y,w,h) = tile
-        return self.img.crop((x, y, x+w, y+h))
-        
+        if type(tile[0])==float:
+            tile = to_int_coords(tile)
+            
+        if tile not in self.img_cache:
+            (x,y,w,h) = tile
+            self.img_cache[tile] = self.img.crop((x, y, x+w, y+h))
+            
+        return self.img_cache[tile]
