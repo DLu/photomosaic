@@ -1,5 +1,6 @@
 from __future__ import division
 from image_functions import *
+from math import floor, ceil
 
 FORMAT = "%(name)s.%(funcName)s:  %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -9,42 +10,27 @@ class Partition:
     def __init__(self, img, mask=None):
         self.img = img
         self.mask = mask
-        self.new_img = None
         self.areas = []
+        self.tiles = None
 
     def simple_partition(self, dimensions=10, depth=0, hdr=80,
-              debris=False, min_debris_depth=1, base_width=None, analyze=True):
+              debris=False, min_debris_depth=1, analyze=True):
         "Partition the target image into a list of Tile objects."
         if isinstance(dimensions, int):
             dimensions = dimensions, dimensions
-        if base_width is not None:
-            cwidth = self.img.size[0] / dimensions[0]
-            width = base_width * dimensions[0]
-            factor = base_width / cwidth
-            height = int(self.img.size[1] * factor)
-            print self.img.size, dimensions, width, height
-            img = crop_to_fit(self.img, (width, height))
-        # img.size must have dimensions*2**depth as a factor.
-        factor = dimensions[0]*2**depth, dimensions[1]*2**depth
-        new_size = tuple([int(factor[i]*np.ceil(self.img.size[i]/factor[i])) \
-                          for i in [0, 1]])
-        logger.info("Resizing image to %s, a round number for partitioning. "
-                    "If necessary, I will crop to fit.",
-                    new_size)
-        img = crop_to_fit(self.img, new_size)
-        
+
         mask = self.mask
         
-        if mask:
-            mask = crop_to_fit(mask, new_size)
-            if not debris:
-                mask = mask.convert("1") # no gray
-        width = img.size[0] // dimensions[0] 
-        height = img.size[1] // dimensions[1]
-        tiles = []
+        #if mask:
+        #    mask = crop_to_fit(mask, new_size)
+        #    if not debris:
+        #        mask = mask.convert("1") # no gray
+        width = self.img.size[0] / dimensions[0] 
+        height = self.img.size[1] / dimensions[1]
+
         for y in range(dimensions[1]):
             for x in range(dimensions[0]):
-                tiles.append( (x*width, y*height, width, height) )
+                self.areas.append( (x*width, y*height, width, height) )
 
         """
         for g in xrange(depth):
@@ -63,8 +49,6 @@ class Partition:
         [tile.determine_blankness(min_debris_depth) for tile in tiles]
         logger.info("%d tiles are set to be blank",
                     len([1 for tile in tiles if tile.blank]))"""
-        self.new_img = img            
-        self.tiles = tiles
         
         """
         if not analyze:
@@ -73,8 +57,20 @@ class Partition:
         for tile in self.tiles:
             tile.analyze()
             pbar.next()"""
-            
+        self.get_tiles()    
+    
+    def get_tiles(self):
+        if self.tiles:
+            return self.tiles
+        self.tiles = []    
+        for x,y,w,h in self.areas:    
+            x0 = int(floor(x))
+            y0 = int(floor(y))
+            w0 = int(ceil(x+w)-x0)
+            h0 = int(ceil(y+h)-y0)
+            self.tiles.append( (x0, y0, w0, h0) )                    
+
     def get_tile_img(self, tile):
         (x,y,w,h) = tile
-        return self.new_img.crop((x, y, x+w, y+h))
+        return self.img.crop((x, y, x+w, y+h))
         
