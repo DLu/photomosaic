@@ -63,8 +63,11 @@ class Photomosaic:
               debris=False, min_debris_depth=1, analyze=True):
         "Partition the target image into a list of Tile objects."
         self.p = Partition(self.img)
-        self.p.simple_partition(dimensions, depth, hdr, debris, 
+        self.p.simple_partition(dimensions, debris, 
             min_debris_depth, analyze)
+        self.p.recursive_split(depth, hdr)    
+            
+        self.p.get_tiles()    
             
         self.numbers = {}    
 

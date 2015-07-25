@@ -1,7 +1,6 @@
 
 from memo import memo
 from PIL import Image
-from PIL import ImageFilter
 import logging
 import color_spaces as cs
 from image_functions import *
@@ -151,36 +150,7 @@ class Tile(object):
         if darkest_pixel == 255:
             return False
         return True
- 
-    def dynamic_range(self):
-        """What is the dynamic range in this image? Return the
-        average dynamic range over RGB channels. Blur the image
-        first to smooth away outliers."""
-        return sum(map(lambda (x, y): y - x, 
-                       self._img.filter(ImageFilter.BLUR).getextrema()))//3
 
-    def procreate(self):
-        """Divide image into quadrants, make each into a child tile,
-        and return them all in a list.""" 
-        width = self._img.size[0] // 2
-        height = self._img.size[1] // 2
-        children = []
-        for y in [0, 1]:
-            for x in [0, 1]:
-                tile_img = self._img.crop((x*width, y*height,
-                                    (x + 1)*width, (y + 1)*height))
-                if self._mask:
-                    mask_img = self._mask.crop((x*width, y*height,
-                                         (x + 1)*width, (y + 1)*height))
-                else:
-                    mask_img = None
-                child = Tile(tile_img, self.x, self.y,
-                             mask=mask_img,
-                             ancestry=self._ancestry + [(x, y)],
-                             ancestor_size=self._ancestor_size)
-                children.append(child)
-        return children
-        
     def get_position(self, size, scatter=False, margin=0):
         """Return the x, y position of the tile in the mosaic, according for
         possible margins and optional random nudges for a 'scattered' look.""" 

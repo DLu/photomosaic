@@ -4,6 +4,7 @@ import scipy.misc
 from scipy.cluster import vq
 import numpy as np
 from PIL import Image
+from PIL import ImageFilter
 
 import logging
 
@@ -171,3 +172,11 @@ def shrink_by_lightness(pad, tile_size, dL):
     scaling = MAX - (MAX - MIN)*(-pad*dL)/MAX_dL
     shrunk_size = [int(scaling*dim) for dim in tile_size]
     return shrunk_size
+
+ 
+def dynamic_range(img):
+    """What is the dynamic range in this image? Return the
+    average dynamic range over RGB channels. Blur the image
+    first to smooth away outliers."""
+    return sum(map(lambda (x, y): y - x, 
+                   img.filter(ImageFilter.BLUR).getextrema()))//3
