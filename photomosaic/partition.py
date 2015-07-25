@@ -52,6 +52,23 @@ class Partition:
         for y in range(dimensions[1]):
             for x in range(dimensions[0]):
                 self.areas.append( (x*width, y*height, width, height) )
+                
+    def brick_partition(self, dimensions=10):
+        if isinstance(dimensions, int):
+            dimensions = dimensions, dimensions
+
+        width = self.img.size[0] / dimensions[0] 
+        height = self.img.size[1] / dimensions[1]
+
+        for y in range(dimensions[1]):
+            if y%2==0:
+                for x in range(dimensions[0]):
+                    self.areas.append( (x*width, y*height, width, height) )
+            else:
+                for x in range(dimensions[0]-1):
+                    self.areas.append( (x*width+width/2, y*height, width, height) )
+                self.areas.append( (0, y*height, width/2, height) )    
+                self.areas.append( (self.img.size[0]-width/2, y*height, width/2, height) )    
 
     def recursive_split(self, depth=0, hdr=80):
         for g in xrange(depth):
