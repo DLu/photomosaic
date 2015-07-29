@@ -1,6 +1,7 @@
 from __future__ import division
 from image_functions import *
 from math import floor, ceil
+from random import randrange
 
 FORMAT = "%(name)s.%(funcName)s:  %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
@@ -88,21 +89,31 @@ class Partition:
         for tile in self.tiles:
             tile.analyze()
             pbar.next()"""
+
             
-    def remove_blanks(self):
+    def remove_blanks(self, max_size=0.2):
+        """Decide which tiles are blank. 
+           Where the mask is grey, small tiles are blanked probabilistically. 
+           (Small is defined as having a width smaller than
+              max_size * img_width)"""
         if not self.mask:
             return
         new_tiles = []
         for tile in self.areas:
             mtile = self.get_mask_img(tile)
             brightest_pixel = mtile.getextrema()[1]
-            if brightest_pixel != 0:
+            if brightest_pixel == 255:
                 new_tiles.append( tile )
+            elif brightest_pixel == 0:
+                continue
+            elif tile[2] >= max_size * self.img.size()[0]:
+                continue
+            elif rand_range(255) < brightest_pixel:
+                new_tiles.append( tile )
+            
         logger.info("%d/%d tiles are set to be blank",
                     len(self.areas)-len(new_tiles), len(self.areas))
         self.areas = new_tiles
-
-        
 
     def get_tiles(self):
         if self.tiles:

@@ -118,26 +118,6 @@ class Tile(object):
         self.rgb = map(dominant_color, regions) 
         self.lab = map(cs.rgb2lab, self.rgb)
 
-    def determine_blankness(self, min_depth=1):
-        """Decide whether this tile is blank. Where the mask is grey, tiles
-        and blanked probabilitisically. The kwarg min_depth limits this
-        scattered behavior to small tiles."""
-        if not self._mask: # no mask
-            self._blank = False
-            return
-        brightest_pixel = self._mask.getextrema()[1]
-        if brightest_pixel == 0: # black mask 
-            self._blank = True
-        elif brightest_pixel == 255: # white mask
-            self._blank = False
-        elif self._depth < min_depth: # gray mask -- big tile
-            self._blank = True
-        elif 255*np.random.rand() > brightest_pixel: # small tile
-            self._blank = True
-        else:
-            self._blank = False
-        return
-
     def straddles_mask_edge(self):
         """A tile straddles an edge if it contains PURE white (255) and some
         nonwhite. A tile that contains varying shades of gray does not
