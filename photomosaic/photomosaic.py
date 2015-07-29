@@ -47,11 +47,11 @@ def simple(image_dir, target_filename, dimensions, output_file):
     pool.close()
     
 class Photomosaic:
-    def __init__(self, target_filename, pool, mask=None, tuning=True):
+    def __init__(self, target_filename, pool, mask=None, debris=False, tuning=True):
         self.orig_img = open(target_filename)
         self.pool = pool
         self.tuning = tuning
-        self.set_mask(mask)
+        self.set_mask(mask, debris)
         if tuning:
             self.img = self.tune(quiet=True)
         else:    
@@ -60,10 +60,10 @@ class Photomosaic:
         self.mos = None
         
     def partition_tiles(self, dimensions=10, depth=0, hdr=80,
-              debris=False, min_debris_depth=1, analyze=True):
+              min_debris_depth=1, analyze=True):
         "Partition the target image into a list of Tile objects."
         self.p = Partition(self.img)
-        self.p.simple_partition(dimensions, debris, 
+        self.p.simple_partition(dimensions, 
             min_debris_depth, analyze)
         self.p.recursive_split(depth, hdr)    
             
@@ -139,9 +139,11 @@ class Photomosaic:
         logger.info('Saving mosaic to %s', output_file)
         mos.save(output_file)
         
-    def set_mask(self, mask_fn):
+    def set_mask(self, mask_fn, debris=False):
         if mask_fn:
             self.mask = open(mask_fn)
+            if not debris:
+                self.mask = self.mask.convert("1") # no gray
             self.m = crop_to_fit(self.mask, self.orig_img.size)
             self.target_palette = compute_palette(img_histogram(self.orig_img, self.m))
         else:

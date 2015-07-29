@@ -35,7 +35,7 @@ class Partition:
         self.img_cache = {}
 
     def simple_partition(self, dimensions=10,
-              debris=False, min_debris_depth=1, analyze=True):
+              min_debris_depth=1, analyze=True):
         "Partition the target image into a list of Tile objects."
         if isinstance(dimensions, int):
             dimensions = dimensions, dimensions
@@ -44,8 +44,7 @@ class Partition:
         
         #if mask:
         #    mask = crop_to_fit(mask, new_size)
-        #    if not debris:
-        #        mask = mask.convert("1") # no gray
+        #    
         width = self.img.size[0] / dimensions[0] 
         height = self.img.size[1] / dimensions[1]
 
