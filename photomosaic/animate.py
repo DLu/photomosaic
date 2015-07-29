@@ -17,9 +17,12 @@ def no_sort(tile):
     
 def size_sort(tile):
     return -tile.w
+    
+def pos_sort(tile):
+    return tile.y, tile.x
 
 analyze_sort = no_sort
-match_sort = no_sort #color_sort
+match_sort = pos_sort #color_sort
 
 locs = [[0,0], [1,0], [0,1], [1,1]]
 
