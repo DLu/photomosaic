@@ -79,7 +79,6 @@ class Partition:
                     self.areas.append(tile)
             logging.info("There are %d tiles in generation %d",
                          len(self.areas), g)
-        self.remove_blanks()
 
     def straddles_mask_edge(self, tile):
         """A tile straddles an edge if it contains PURE white (255) and some
@@ -122,6 +121,7 @@ class Partition:
     def get_tiles(self):
         if self.tiles:
             return self.tiles
+        self.remove_blanks()
         self.tiles = map(to_int_coords, self.areas)
 
     def get_cached_img(self, tile, cache, img):

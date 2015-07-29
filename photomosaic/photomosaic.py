@@ -59,8 +59,7 @@ class Photomosaic:
         self.tiles = None
         self.mos = None
         
-    def partition_tiles(self, dimensions=10, depth=0, hdr=80,
-              min_debris_depth=1, analyze=True):
+    def partition_tiles(self, dimensions=10, depth=0, hdr=80, analyze=True):
         "Partition the target image into a list of Tile objects."
         self.p = Partition(self.img, self.mask)
         self.p.simple_partition(dimensions)
