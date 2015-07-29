@@ -33,6 +33,7 @@ class Partition:
         self.areas = []
         self.tiles = None
         self.img_cache = {}
+        self.mask_cache = {}
 
     def simple_partition(self, dimensions=10,
               min_debris_depth=1, analyze=True):
@@ -40,11 +41,6 @@ class Partition:
         if isinstance(dimensions, int):
             dimensions = dimensions, dimensions
 
-        mask = self.mask
-        
-        #if mask:
-        #    mask = crop_to_fit(mask, new_size)
-        #    
         width = self.img.size[0] / dimensions[0] 
         height = self.img.size[1] / dimensions[1]
 
@@ -83,10 +79,7 @@ class Partition:
                     self.areas.append(tile)
             logging.info("There are %d tiles in generation %d",
                          len(self.areas), g)
-        # Now that all tiles have been made and subdivided, decide which are blank.
-        #[tile.determine_blankness(min_debris_depth) for tile in tiles]
-        #logger.info("%d tiles are set to be blank",
-        #            len([1 for tile in tiles if tile.blank]))
+        self.remove_blanks()
         
         """
         if not analyze:
@@ -95,18 +88,41 @@ class Partition:
         for tile in self.tiles:
             tile.analyze()
             pbar.next()"""
+            
+    def remove_blanks(self):
+        if not self.mask:
+            return
+        new_tiles = []
+        for tile in self.areas:
+            mtile = self.get_mask_img(tile)
+            brightest_pixel = mtile.getextrema()[1]
+            if brightest_pixel != 0:
+                new_tiles.append( tile )
+        logger.info("%d/%d tiles are set to be blank",
+                    len(self.areas)-len(new_tiles), len(self.areas))
+        self.areas = new_tiles
+
+        
 
     def get_tiles(self):
         if self.tiles:
             return self.tiles
         self.tiles = map(to_int_coords, self.areas)
 
-    def get_tile_img(self, tile):
+    def get_cached_img(self, tile, cache, img):
         if type(tile[0])==float:
             tile = to_int_coords(tile)
-            
-        if tile not in self.img_cache:
+
+        if tile not in cache:
             (x,y,w,h) = tile
-            self.img_cache[tile] = self.img.crop((x, y, x+w, y+h))
-            
-        return self.img_cache[tile]
+            cache[tile] = img.crop((x, y, x+w, y+h))
+
+        return cache[tile]
+
+    def get_tile_img(self, tile):
+        return self.get_cached_img(tile, self.img_cache, self.img)
+        
+    def get_mask_img(self, tile):
+        if self.mask is None:
+            return None
+        return self.get_cached_img(tile, self.mask_cache, self.mask)
