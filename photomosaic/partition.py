@@ -36,8 +36,7 @@ class Partition:
         self.img_cache = {}
         self.mask_cache = {}
 
-    def simple_partition(self, dimensions=10,
-              min_debris_depth=1, analyze=True):
+    def simple_partition(self, dimensions=10):
         "Partition the target image into a list of Tile objects."
         if isinstance(dimensions, int):
             dimensions = dimensions, dimensions
@@ -82,15 +81,6 @@ class Partition:
                          len(self.areas), g)
         self.remove_blanks()
         
-        """
-        if not analyze:
-            return
-        pbar = progress_bar(len(self.tiles), "Analyzing images")
-        for tile in self.tiles:
-            tile.analyze()
-            pbar.next()"""
-
-            
     def remove_blanks(self, max_size=0.2):
         """Decide which tiles are blank. 
            Where the mask is grey, small tiles are blanked probabilistically. 

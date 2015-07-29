@@ -63,8 +63,7 @@ class Photomosaic:
               min_debris_depth=1, analyze=True):
         "Partition the target image into a list of Tile objects."
         self.p = Partition(self.img, self.mask)
-        self.p.simple_partition(dimensions, 
-            min_debris_depth, analyze)
+        self.p.simple_partition(dimensions)
         self.p.recursive_split(depth, hdr)    
             
         self.p.get_tiles()    
@@ -89,9 +88,6 @@ class Photomosaic:
         
         pbar = progress_bar(len(self.p.tiles), "Choosing and loading matching images")
         for tile in self.p.tiles:
-            #if tile.blank:
-            #    pbar.next()
-            #    continue
             self.match_one(tile, tolerance, usage_penalty, usage_impunity)
             pbar.next()
     
@@ -110,9 +106,6 @@ class Photomosaic:
         pbar = progress_bar(len(self.p.tiles), "Scaling and placing tiles")
         random.shuffle(self.p.tiles)
         for tile in self.p.tiles:
-            #if tile.blank:
-            #    pbar.next()
-            #    continue
             if pad:
                 size = shrink_by_lightness(pad, tile.size, tile.match['dL'])
                 if margin == 0:
