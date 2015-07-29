@@ -65,14 +65,14 @@ class Photomosaic:
         self.p.simple_partition(dimensions)
         self.p.recursive_split(depth, hdr)    
             
-        self.p.get_tiles()    
+        self.tiles = self.p.get_tiles()    
             
         self.numbers = {}    
 
         if not analyze:
             return
-        pbar = progress_bar(len(self.p.tiles), "Analyzing images")
-        for tile in self.p.tiles:
+        pbar = progress_bar(len(self.tiles), "Analyzing images")
+        for tile in self.tiles:
             self.numbers[tile] = analyze_this( self.p.get_tile_img(tile) )
             pbar.next()
 
@@ -85,8 +85,8 @@ class Photomosaic:
         
         self.matches = {}
         
-        pbar = progress_bar(len(self.p.tiles), "Choosing and loading matching images")
-        for tile in self.p.tiles:
+        pbar = progress_bar(len(self.tiles), "Choosing and loading matching images")
+        for tile in self.tiles:
             self.match_one(tile, tolerance, usage_penalty, usage_impunity)
             pbar.next()
     
@@ -100,24 +100,24 @@ class Photomosaic:
            background=(255, 255, 255)):
         """Create the mosaic image.""" 
         # Infer dimensions so they don't have to be passed in the function call.
-        mosaic_size = map(max, zip(*[(tile[0]+tile[2], tile[1]+tile[3]) for tile in self.p.tiles]))
+        mosaic_size = map(max, zip(*[(tile.x+tile.w, tile.y+tile.h) for tile in self.tiles]))
         mos = Image.new('RGB', mosaic_size, background)
-        pbar = progress_bar(len(self.p.tiles), "Scaling and placing tiles")
-        random.shuffle(self.p.tiles)
-        for tile in self.p.tiles:
-            if pad:
+        pbar = progress_bar(len(self.tiles), "Scaling and placing tiles")
+        random.shuffle(self.tiles)
+        for tile in self.tiles:
+            if False: #pad: TODO!
                 size = shrink_by_lightness(pad, tile.size, tile.match['dL'])
                 if margin == 0:
                     margin = min(tile.size[0] - size[0], tile.size[1] - size[1])
             else:
-                size = tile[2], tile[3]
+                size = tile.w, tile.h
             if scaled_margin:
-                pos = tile.get_position(size, scatter, margin//(1 + tile.depth))
+                pos = tile.get_position(size, scatter, margin//(1 + tile.depth)) #TODO
             else:
-                pos = tile[0], tile[1] #tile.get_position(size, scatter, margin)
+                pos = tile.x, tile.y #tile.get_position(size, scatter, margin)
                 
             fn = self.matches[tile][4]
-            mi = Image.open(fn) 
+            mi = Image.open(fn)
             mos.paste(crop_to_fit(mi, size), pos)
             pbar.next()
         self.mos = mos

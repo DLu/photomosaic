@@ -7,18 +7,38 @@ FORMAT = "%(name)s.%(funcName)s:  %(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
-def to_int_coords(area):
-    x,y,w,h = area
-    x0 = int(floor(x))
-    y0 = int(floor(y))
-    w0 = int(ceil(x+w)-x0)
-    h0 = int(ceil(y+h)-y0)
-    return x0,y0,w0,h0
+class Tile:
+    def __init__(self, x,y,w,h):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
     
-def procreate(area):
-    """Divide image into quadrants, and return them all in a list.""" 
+    def is_float(self):
+        return type(self.x)==float
+        
+    def int_version(self):
+        x0 = int(floor(self.x))
+        y0 = int(floor(self.y))
+        w0 = int(ceil(self.x+self.w)-x0)
+        h0 = int(ceil(self.y+self.h)-y0)
+        return Tile(x0,y0,w0,h0)
+        
+    def quad(self):
+        return (self.x, self.y, self.w, self.h)
+        
+    def coords(self):
+        return (self.x, self.y, self.x+self.w, self.y+self.h)
+        
+    def __hash__(self):
+        return hash(self.quad())
 
-    x,y,w,h = area
+    def __eq__(self, other):
+        return self.quad() == other.quad()
+
+def procreate(tile):
+    """Divide image into quadrants, and return them all in a list.""" 
+    x,y,w,h = tile.quad()
     w/=2
     h/=2
     children = []
@@ -31,8 +51,8 @@ class Partition:
     def __init__(self, img, mask=None):
         self.img = img
         self.mask = mask
-        self.areas = []
-        self.tiles = None
+        self.tiles = []
+        self.final_tiles = None
         self.img_cache = {}
         self.mask_cache = {}
 
@@ -46,8 +66,8 @@ class Partition:
 
         for y in range(dimensions[1]):
             for x in range(dimensions[0]):
-                self.areas.append( (x*width, y*height, width, height) )
-                
+                self.tiles.append( Tile(x*width, y*height, width, height) )
+
     def brick_partition(self, dimensions=10):
         if isinstance(dimensions, int):
             dimensions = dimensions, dimensions
@@ -58,27 +78,27 @@ class Partition:
         for y in range(dimensions[1]):
             if y%2==0:
                 for x in range(dimensions[0]):
-                    self.areas.append( (x*width, y*height, width, height) )
+                    self.tiles.append( Tile(x*width, y*height, width, height) )
             else:
                 for x in range(dimensions[0]-1):
-                    self.areas.append( (x*width+width/2, y*height, width, height) )
-                self.areas.append( (0, y*height, width/2, height) )    
-                self.areas.append( (self.img.size[0]-width/2, y*height, width/2, height) )    
+                    self.tiles.append( Tile(x*width+width/2, y*height, width, height) )
+                self.tiles.append( Tile(0, y*height, width/2, height) )    
+                self.tiles.append( Tile(self.img.size[0]-width/2, y*height, width/2, height) )    
 
     def recursive_split(self, depth=0, hdr=80):
         for g in xrange(depth):
-            old_tiles = self.areas
-            self.areas = []
+            old_tiles = self.tiles
+            self.tiles = []
             for tile in old_tiles:
                 im = self.get_tile_img(tile)
                 if dynamic_range(im) > hdr or self.straddles_mask_edge(tile):
                     # Keep children; discard parent.
-                    self.areas += procreate(tile)
+                    self.tiles += procreate(tile)
                 else:
                     # Keep tile -- no children.
-                    self.areas.append(tile)
+                    self.tiles.append(tile)
             logging.info("There are %d tiles in generation %d",
-                         len(self.areas), g)
+                         len(self.tiles), g)
 
     def straddles_mask_edge(self, tile):
         """A tile straddles an edge if it contains PURE white (255) and some
@@ -102,35 +122,35 @@ class Partition:
         if not self.mask:
             return
         new_tiles = []
-        for tile in self.areas:
+        for tile in self.tiles:
             mtile = self.get_mask_img(tile)
             brightest_pixel = mtile.getextrema()[1]
             if brightest_pixel == 255:
                 new_tiles.append( tile )
             elif brightest_pixel == 0:
                 continue
-            elif tile[2] >= max_size * self.img.size()[0]:
+            elif tile.w >= max_size * self.img.size()[0]:
                 continue
             elif rand_range(255) < brightest_pixel:
                 new_tiles.append( tile )
             
         logger.info("%d/%d tiles are set to be blank",
-                    len(self.areas)-len(new_tiles), len(self.areas))
-        self.areas = new_tiles
+                    len(self.tiles)-len(new_tiles), len(self.tiles))
+        self.tiles = new_tiles
 
     def get_tiles(self):
-        if self.tiles:
-            return self.tiles
+        if self.final_tiles:
+            return self.final_tiles
         self.remove_blanks()
-        self.tiles = map(to_int_coords, self.areas)
+        self.final_tiles = map(Tile.int_version, self.tiles)
+        return self.final_tiles
 
     def get_cached_img(self, tile, cache, img):
-        if type(tile[0])==float:
-            tile = to_int_coords(tile)
+        if tile.is_float():
+            tile = tile.int_version()
 
         if tile not in cache:
-            (x,y,w,h) = tile
-            cache[tile] = img.crop((x, y, x+w, y+h))
+            cache[tile] = img.crop( tile.coords() )
 
         return cache[tile]
 
