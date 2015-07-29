@@ -58,6 +58,8 @@ class Photomosaic:
             self.img = self.orig_img
         self.tiles = None
         self.mos = None
+        self.numbers = {}
+        self.matches = {}
         
     def partition_tiles(self, dimensions=10, depth=0, hdr=80, analyze=True):
         "Partition the target image into a list of Tile objects."
@@ -65,16 +67,18 @@ class Photomosaic:
         self.p.simple_partition(dimensions)
         self.p.recursive_split(depth, hdr)    
             
-        self.tiles = self.p.get_tiles()    
-            
-        self.numbers = {}    
+        self.tiles = self.p.get_tiles()
 
         if not analyze:
             return
         pbar = progress_bar(len(self.tiles), "Analyzing images")
         for tile in self.tiles:
-            self.numbers[tile] = analyze_this( self.p.get_tile_img(tile) )
+            self.analyze_one(tile)
             pbar.next()
+            
+    def analyze_one(self, tile):
+        self.numbers[tile] = analyze_this( self.p.get_tile_img(tile) )
+        return self.numbers[tile]
 
     def match(self, tolerance=1, usage_penalty=1, usage_impunity=2):
         """Assign each tile a new image, and open that image in the Tile object."""
@@ -82,8 +86,6 @@ class Photomosaic:
             logger.error('No images in pool to match!')
             exit(-1)
         self.pool.reset_usage()
-        
-        self.matches = {}
         
         pbar = progress_bar(len(self.tiles), "Choosing and loading matching images")
         for tile in self.tiles:
@@ -94,7 +96,7 @@ class Photomosaic:
         rgb, lab = self.numbers[ tile ] 
         match = self.pool.choose_match(lab, tolerance, usage_penalty )
         self.matches[ tile ] = match
-        print 'MATCH', match
+        return match
             
     def assemble(self, pad=False, scatter=False, margin=0, scaled_margin=False,
            background=(255, 255, 255)):
