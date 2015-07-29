@@ -44,7 +44,7 @@ def procreate(tile):
     children = []
     for i in [0, 1]:
         for j in [0, 1]:
-            children.append((x+w*i, y+h*j, w, h))
+            children.append( Tile(x+w*i, y+h*j, w, h))
     return children
 
 class Partition:
