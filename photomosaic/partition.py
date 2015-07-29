@@ -71,7 +71,7 @@ class Partition:
             self.areas = []
             for tile in old_tiles:
                 im = self.get_tile_img(tile)
-                if dynamic_range(im) > hdr or False:# tile.straddles_mask_edge():
+                if dynamic_range(im) > hdr or self.straddles_mask_edge(tile):
                     # Keep children; discard parent.
                     self.areas += procreate(tile)
                 else:
@@ -80,7 +80,21 @@ class Partition:
             logging.info("There are %d tiles in generation %d",
                          len(self.areas), g)
         self.remove_blanks()
-        
+
+    def straddles_mask_edge(self, tile):
+        """A tile straddles an edge if it contains PURE white (255) and some
+        nonwhite. A tile that contains varying shades of gray does not
+        straddle an edge."""
+        if not self.mask:
+            return False
+        mtile = self.get_mask_img(tile)
+        darkest_pixel, brightest_pixel = mtile.getextrema()
+        if brightest_pixel != 255:
+            return False
+        if darkest_pixel == 255:
+            return False
+        return True
+
     def remove_blanks(self, max_size=0.2):
         """Decide which tiles are blank. 
            Where the mask is grey, small tiles are blanked probabilistically. 

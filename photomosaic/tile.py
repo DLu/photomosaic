@@ -118,19 +118,6 @@ class Tile(object):
         self.rgb = map(dominant_color, regions) 
         self.lab = map(cs.rgb2lab, self.rgb)
 
-    def straddles_mask_edge(self):
-        """A tile straddles an edge if it contains PURE white (255) and some
-        nonwhite. A tile that contains varying shades of gray does not
-        straddle an edge."""
-        if not self._mask:
-            return False
-        darkest_pixel, brightest_pixel = self._mask.getextrema()
-        if brightest_pixel != 255:
-            return False
-        if darkest_pixel == 255:
-            return False
-        return True
-
     def get_position(self, size, scatter=False, margin=0):
         """Return the x, y position of the tile in the mosaic, according for
         possible margins and optional random nudges for a 'scattered' look.""" 
