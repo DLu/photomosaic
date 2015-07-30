@@ -15,7 +15,7 @@ class Tile:
         self.h = h
     
     def is_float(self):
-        return type(self.x)==float
+        return type(self.x)==float or type(self.y)==float
         
     def int_version(self):
         x0 = int(floor(self.x))
@@ -35,6 +35,9 @@ class Tile:
 
     def __eq__(self, other):
         return self.quad() == other.quad()
+        
+    def __repr__(self):
+        return str(self.quad())
 
 def procreate(tile):
     """Divide image into quadrants, and return them all in a list.""" 
