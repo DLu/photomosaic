@@ -20,6 +20,7 @@ def args_parser(output_file=False):
     parser.add_argument('-r', '--recursion_level', default=0, type=int)
     parser.add_argument('-f', '--folders', nargs='*', default=[])
     parser.add_argument('-m', '--mask')
+    parser.add_argument('-w', '--output_width', type=int)
     return parser
     
 def get_database(args):
@@ -34,13 +35,12 @@ if __name__=='__main__':
     from photomosaic import Photomosaic
     
     args = args_parser(True).parse_args()
-
     pool = get_database(args)
 
     p = Photomosaic(args.infile, pool, tuning=args.tune, mask=args.mask)
     p.partition_tiles(args.dimensions, depth=args.recursion_level)
     p.match()
-    p.assemble()
+    p.assemble(new_width=args.output_width)
     p.save(args.outfile)
     
     pool.close()

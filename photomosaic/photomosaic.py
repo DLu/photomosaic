@@ -99,10 +99,16 @@ class Photomosaic:
         return match
             
     def assemble(self, pad=False, scatter=False, margin=0, scaled_margin=False,
-           background=(255, 255, 255)):
+           background=(255, 255, 255), new_width=None):
         """Create the mosaic image.""" 
         # Infer dimensions so they don't have to be passed in the function call.
         mosaic_size = map(max, zip(*[(tile.x+tile.w, tile.y+tile.h) for tile in self.tiles]))
+        if new_width is None:
+            scale = 1.0
+        else:
+            scale = new_width / mosaic_size[0]
+            mosaic_size = (new_width, int(scale * mosaic_size[1]))
+        
         mos = Image.new('RGB', mosaic_size, background)
         pbar = progress_bar(len(self.tiles), "Scaling and placing tiles")
         random.shuffle(self.tiles)
@@ -112,11 +118,11 @@ class Photomosaic:
                 if margin == 0:
                     margin = min(tile.size[0] - size[0], tile.size[1] - size[1])
             else:
-                size = tile.w, tile.h
+                size = int(tile.w*scale), int(tile.h*scale)
             if scaled_margin:
                 pos = tile.get_position(size, scatter, margin//(1 + tile.depth)) #TODO
             else:
-                pos = tile.x, tile.y #tile.get_position(size, scatter, margin)
+                pos = int(tile.x*scale), int(tile.y*scale) #tile.get_position(size, scatter, margin)
                 
             fn = self.matches[tile][4]
             mi = Image.open(fn)
