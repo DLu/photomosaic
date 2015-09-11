@@ -110,14 +110,6 @@ class Tile(object):
     def blank(self):
         return self._blank
         
-    def analyze(self):
-        """"Determine dominant colors of target tile, and save that information"""
-        if self.blank:
-            return
-        regions = split_quadrants(self)
-        self.rgb = map(dominant_color, regions) 
-        self.lab = map(cs.rgb2lab, self.rgb)
-
     def get_position(self, size, scatter=False, margin=0):
         """Return the x, y position of the tile in the mosaic, according for
         possible margins and optional random nudges for a 'scattered' look.""" 
