@@ -3,6 +3,7 @@ from progress_bar import progress_bar
 import color_spaces as cs
 from PIL import Image
 from image_functions import *
+from image_analysis import analyze_this
 import logging
 
 # Configure logger.
@@ -42,9 +43,7 @@ class ImagePool:
             
         w, h = img.size
         try:
-            regions = split_quadrants(img)
-            rgb = map(dominant_color, regions) 
-            lab = map(cs.rgb2lab, rgb)
+            rgb, lab = analyze_this(img)
         except Exception as e:
             logger.warning("Unknown problem analyzing %s. (%s) Skipping it.",
                            filename, str(e))
